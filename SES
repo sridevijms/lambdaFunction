@@ -1,0 +1,62 @@
+import json
+import boto3
+import csv
+
+def lambda_handler(event, context):
+    # TODO implement
+    print(str(event))
+    s3 = boto3.resource('s3')
+    ses_client = boto3.client('ses' )   
+    try:
+        for record in event['Records']:
+            bucketname = event['Records'][0]["s3"]["bucket"]["name"]
+            print(bucketname)
+            itemname = event['Records'][0]["s3"]["object"]["key"]
+            print(itemname)
+            obj = s3.Object(bucketname, itemname)
+            body = obj.get()['Body'].read().decode('utf-8').splitlines()
+            print(body)
+            lines = csv.reader(body)
+            headers = next(lines)
+            print('headers: %s' %(headers))
+            for line in lines:
+                #print complete line
+                print(line)
+                #print index wise
+                print(line[0], line[1])
+                
+                name = line[0]   
+                source = 'sridevi.murugayen@agilisium.com'  
+                subject = 'Acknowledgement'
+                message = 'Thank You'    
+                destination1 = line[10]   
+                destination = 'sridevi.murugayen@agilisium.com' 
+                _message = "Message from: " + name + "\nEmail: " + source + "\nMessage content: " + message   
+                
+                response = ses_client.send_templated_email(
+                  Source=source,
+                  Destination={
+                    'ToAddresses': [
+                      destination,
+                    ]
+                  },
+                  ReplyToAddresses=[
+                    source,
+                  ],
+                  Template='wonderfultemp',
+                  
+                  TemplateData="{\"name\": \"  %s \"}" %(name)
+                  
+
+                )
+
+    except Exception as e:
+        # Send some context about this error to Lambda Logs
+        print(e)
+        # throw exception, do not handle. Lambda will make message visible again.
+        raise e
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
+    }
